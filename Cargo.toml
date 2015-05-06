@@ -1,0 +1,4 @@
+[package]
+name = "rpcomb"
+version = "0.1.0"
+authors = ["Jia Chen <grievejia@gmail.com>"]
