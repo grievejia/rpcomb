@@ -1,6 +1,5 @@
 use internal::{ParseError, ParseOutput, InputStream};
 use super::parser::Parser;
-use std::str;
 
 pub struct StringParser<'a> {
 	text: &'a str
@@ -12,15 +11,17 @@ impl<'a> StringParser<'a> {
 	}
 }
 
-impl<'a, 'b> Parser<'b, &'b str> for StringParser<'a> {
-	fn parse<T: InputStream<T>>(&self, input: &'b T) -> ParseOutput<T, &'b str> {
+impl<'a, 't> Parser<'t> for StringParser<'a> {
+	type OutputType = &'t str;
+
+	fn parse<T: InputStream<'t, T>>(&self, input: T) -> ParseOutput<T, &'t str> {
 		let str_len = self.text.len();
-		let input_str = str::from_utf8(&input.get_input()[..str_len]).ok().expect("Expect legal UTF8 encoding");
+		let input_str = &input.get_input()[..str_len];
 		if input_str == self.text {
 			ParseOutput::Success(input.consume(str_len), input_str)
 		}
 		else {
-			ParseOutput::Failure(ParseError::new("Unexpected byte", input.get_position()))
+			ParseOutput::Failure(ParseError::new("Unexpected token", input.get_position()))
 		}
 	}
 }
@@ -35,10 +36,10 @@ fn string_parser_test() {
 
 	let input = StringInputStream::new("abcde");
 	let parser = strp("abc");
-	match parser.parse(&input) {
+	match parser.parse(input) {
 		ParseOutput::Success(i, o) => {
 			assert_eq!(o, "abc");
-			assert_eq!(i.get_input(), "de".as_bytes());
+			assert_eq!(i.get_input(), "de");
 			assert_eq!(i.get_position().get_line_number(), 1);
 			assert_eq!(i.get_position().get_column_number(), 4);
 		},
@@ -48,9 +49,8 @@ fn string_parser_test() {
 	}
 
 	let input2 = StringInputStream::new("abdce");
-	match parser.parse(&input2) {
+	match parser.parse(input2) {
 		ParseOutput::Failure(err) => {
-			assert_eq!(err.get_error_message(), "Unexpected byte");
 			assert_eq!(err.get_error_position().get_line_number(), 1);
 			assert_eq!(err.get_error_position().get_column_number(), 1);
 		},
